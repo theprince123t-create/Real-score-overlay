@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Live Score Overlay</title>
+<style>
+  :root { --bg: rgba(9, 17, 28, .72); --round: 16px; }
+  html, body { margin:0; padding:0; background:transparent; font-family: system-ui, Arial, sans-serif; }
+  .bar {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px;
+    align-items: center; padding: 12px 18px; border-radius: var(--round);
+    background: var(--bg); color: #fff; min-width: 820px;
+    box-shadow: 0 6px 30px rgba(0,0,0,.35);
+  }
+  .team { display:flex; flex-direction:column; }
+  .team .name { font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team .subs { font-size: 14px; opacity:.85; margin-top: 2px; }
+  .center { text-align:center; }
+  .score { font-size: 28px; font-weight: 800; letter-spacing:.5px; }
+  .meta { font-size: 13px; opacity:.9; margin-top: 2px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#fff; display:inline-block; margin:0 3px; opacity:.4; }
+  .live .dot { opacity:1; animation: blink 1s infinite; }
+  @keyframes blink { 0%, 100%{opacity:1} 50%{opacity:.2} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="team">
+    <div id="t1" class="name">Team A</div>
+    <div id="t1subs" class="subs">Striker — Non-Striker</div>
+  </div>
+
+  <div class="center">
+    <div id="score" class="score">0/0 (0.0)</div>
+    <div id="meta" class="meta"><span class="dot live"></span> LIVE · Bowler</div>
+  </div>
+
+  <div class="team" style="text-align:right">
+    <div id="t2" class="name">Team B</div>
+    <div id="t2subs" class="subs">Target / RR</div>
+  </div>
+</div>
+
+<script>
+  // ====== CONFIG ======
+  // Render server base (deploy karne ke baad apna domain yaha daalein)
+  const SERVER = "https://<YOUR-RENDER-SERVICE>.onrender.com/score";
+
+  // CricHeroes ka _next/data/.../index.json yaha daalo (Network tab se copy kiya hua)
+  const CRICHEROES_JSON = new URLSearchParams(location.search).get("url")
+    || "https://cricheroes.com/_next/data/GWn-9wsDkpg5k-2hvyhaR/index.json";
+
+  async function pull() {
+    try {
+      const url = `${SERVER}?url=${encodeURIComponent(CRICHEROES_JSON)}`;
+      const r = await fetch(url, { cache: "no-store" });
+      const d = await r.json();
+
+      // Fallbacks
+      const t1 = d.teamA || "Team A";
+      const t2 = d.teamB || "Team B";
+      const scoreText = d.scoreText || "0/0 (0.0)";
+      const bats = [d.striker, d.nonStriker].filter(Boolean).join(" · ");
+      const bowl = d.bowler ? `Bowler: ${d.bowler}` : "LIVE";
+
+      document.getElementById("t1").textContent = t1;
+      document.getElementById("t2").textContent = t2;
+      document.getElementById("score").textContent = scoreText;
+      document.getElementById("t1subs").textContent = bats || "—";
+      document.getElementById("meta").innerHTML = `<span class="dot live"></span> ${bowl}`;
+      document.getElementById("t2subs").textContent = d.overs ? `Overs: ${d.overs}` : "";
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  pull();
+  setInterval(pull, 5000); // 5s refresh
+</script>
+</body>
+</html>
